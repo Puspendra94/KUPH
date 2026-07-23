@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --primary: 260 95% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 180 100% 50%;
+    --secondary-foreground: 240 10% 3.9%;
+    --accent: 12 100% 59%;
+    --accent-foreground: 0 0% 100%;
+    --muted: 220 13% 91%;
+    --muted-foreground: 215 14% 34%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 260 95% 56%;
+  }
+}
+
+@layer components {
+  .text-base {
+    @apply text-base;
+  }
+
+  .text-lg {
+    @apply text-lg;
+  }
+
+  .text-xl {
+    @apply text-xl;
+  }
+
+  .text-2xl {
+    @apply text-2xl;
+  }
+
+  .text-3xl {
+    @apply text-3xl;
+  }
+
+  .font-bold {
+    @apply font-bold;
+  }
+
+  .font-semibold {
+    @apply font-semibold;
+  }
+
+  .font-medium {
+    @apply font-medium;
+  }
+}

@@ -1,0 +1,856 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "KUPH Backend API",
+    "description": "REST API for KUPH Influencer Marketing Platform. Manages agencies, campaigns, influencers, clients, authentication via Keycloak, and team collaboration.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "KUPH Support"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api",
+      "description": "Local development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT access token obtained from Keycloak (PKCE flow). Included as 'Authorization: Bearer <token>' on all authenticated requests."
+      }
+    },
+    "schemas": {
+      "KeycloakConfig": {
+        "type": "object",
+        "description": "Public Keycloak configuration for frontend OIDC initialization",
+        "properties": {
+          "authServerUrl": {
+            "type": "string",
+            "example": "http://localhost:8080"
+          },
+          "realm": {
+            "type": "string",
+            "example": "kuph"
+          },
+          "clientId": {
+            "type": "string",
+            "example": "kuph-frontend"
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "description": "User profile returned after token validation",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "OnboardAgencyDto": {
+        "type": "object",
+        "required": ["agencyName", "email"],
+        "properties": {
+          "agencyName": {
+            "type": "string",
+            "description": "Name of the agency",
+            "example": "My Marketing Agency"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email of the user creating the agency",
+            "example": "admin@myagency.com"
+          }
+        }
+      },
+      "OnboardAgencyResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AcceptInviteDto": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Invite token from email",
+            "example": "a1b2c3d4e5f6..."
+          }
+        }
+      },
+      "AcceptInviteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "member", "viewer"]
+          }
+        }
+      },
+      "LookupInviteResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "agencyName": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Campaign": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "budget": {
+            "type": "number",
+            "nullable": true
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateCampaignDto": {
+        "type": "object",
+        "description": "Flexible campaign creation payload. Fields are validated on the backend.",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Summer Launch 2026"
+          },
+          "description": {
+            "type": "string",
+            "example": "Influencer campaign for new product line"
+          },
+          "clientId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "budget": {
+            "type": "number",
+            "example": 50000
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-07-01"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-09-30"
+          }
+        }
+      },
+      "ShareShortlistDto": {
+        "type": "object",
+        "required": ["influencerIds"],
+        "properties": {
+          "influencerIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "example": ["uuid-1", "uuid-2", "uuid-3"]
+          }
+        }
+      },
+      "ShareShortlistResponse": {
+        "type": "object",
+        "properties": {
+          "shared": {
+            "type": "integer",
+            "description": "Number of influencers newly shared"
+          }
+        }
+      },
+      "UpdateDealStatusDto": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "New workflow status (e.g. approved, rejected, demo_change_requested)",
+            "example": "approved"
+          }
+        }
+      },
+      "Influencer": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "customAttributes": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Flexible key-value metadata (e.g. followers, niche, rates)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Client": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "agencyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "customAttributes": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Flexible key-value metadata"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ImportExecuteDto": {
+        "type": "object",
+        "required": ["entityType", "data"],
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Type of entity to import (e.g. influencer, brand)",
+            "example": "influencer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "customAttributes": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            },
+            "description": "Array of entities to import"
+          },
+          "mappingConfig": {
+            "type": "string",
+            "description": "Optional JSON string of column-to-field mapping configuration"
+          }
+        }
+      },
+      "ImportExecuteResponse": {
+        "type": "object",
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "description": "Number of entities successfully imported"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/keycloak-config": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get Keycloak OIDC configuration for frontend",
+        "description": "Returns the public Keycloak URL, realm, and client ID so the frontend can initialize the OIDC PKCE login flow.",
+        "operationId": "getKeycloakConfig",
+        "responses": {
+          "200": {
+            "description": "Keycloak configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeycloakConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Validate JWT and get current user profile",
+        "description": "Validates the Bearer JWT token against Keycloak's JWKS endpoint and returns/creates the local user profile.",
+        "operationId": "getCurrentUser",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid authorization header",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agency/onboard": {
+      "post": {
+        "tags": ["Agency"],
+        "summary": "Create a new agency and set the current user as admin",
+        "operationId": "onboardAgency",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardAgencyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Agency created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardAgencyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/team/invites/lookup": {
+      "get": {
+        "tags": ["Agency"],
+        "summary": "Lookup an invite by code (public, no auth required)",
+        "operationId": "lookupInvite",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Invite code from email"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invite found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupInviteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invite not found or expired"
+          }
+        }
+      }
+    },
+    "/team/invites/accept": {
+      "post": {
+        "tags": ["Agency"],
+        "summary": "Accept an invite to join an agency",
+        "operationId": "acceptInvite",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInviteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully joined agency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptInviteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invite not found"
+          },
+          "409": {
+            "description": "User is already a member"
+          }
+        }
+      }
+    },
+    "/crm/influencers": {
+      "get": {
+        "tags": ["CRM"],
+        "summary": "List all influencers in the agency",
+        "operationId": "getInfluencers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Influencers list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Influencer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/clients": {
+      "get": {
+        "tags": ["CRM"],
+        "summary": "List all clients (brands) in the agency",
+        "operationId": "getClients",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clients list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Client"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crm/import/execute": {
+      "post": {
+        "tags": ["CRM"],
+        "summary": "Bulk import influencers or brands",
+        "description": "Accepts an array of entity data and a mapping configuration to bulk import influencers or brands.",
+        "operationId": "importExecute",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportExecuteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Import completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportExecuteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid entity type or data"
+          }
+        }
+      }
+    },
+    "/campaigns": {
+      "get": {
+        "tags": ["Campaigns"],
+        "summary": "List all campaigns for the user's agency",
+        "operationId": "getCampaigns",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Campaigns list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Campaign"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Campaigns"],
+        "summary": "Create a new campaign",
+        "operationId": "createCampaign",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCampaignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Campaign created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/campaigns/{id}": {
+      "get": {
+        "tags": ["Campaigns"],
+        "summary": "Get a campaign by ID",
+        "operationId": "getCampaign",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Campaign ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Campaign details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Campaign not found"
+          }
+        }
+      }
+    },
+    "/campaigns/{id}/shortlist/share": {
+      "post": {
+        "tags": ["Campaigns"],
+        "summary": "Share influencer shortlist with brand for approval",
+        "operationId": "shareShortlist",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Campaign ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareShortlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shortlist shared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareShortlistResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/campaigns/{id}/deals/{dealId}/status": {
+      "patch": {
+        "tags": ["Campaigns"],
+        "summary": "Update workflow status of a deal",
+        "description": "Updates the workflow status for a specific deal (e.g. approved, rejected, demo_change_requested).",
+        "operationId": "updateDealStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Campaign ID"
+          },
+          {
+            "name": "dealId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Deal ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDealStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deal status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Campaign or deal not found"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Keycloak OIDC configuration and user token validation"
+    },
+    {
+      "name": "Agency",
+      "description": "Agency onboarding and team invite management"
+    },
+    {
+      "name": "CRM",
+      "description": "Influencer and client (brand) management with bulk import"
+    },
+    {
+      "name": "Campaigns",
+      "description": "Campaign CRUD, shortlist sharing, and deal workflow management"
+    }
+  ]
+}

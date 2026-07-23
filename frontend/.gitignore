@@ -1,0 +1,24 @@
+# Lock files ignore
+package-lock.json
+
+# Dependencies
+node_modules/
+
+# Build & Vite output
+dist/
+.vite/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+!*.env.example
+
+# Logs & Diagnostics
+*.log
+coverage/
+
+# IDE
+.vscode/
+.idea/

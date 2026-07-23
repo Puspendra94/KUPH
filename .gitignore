@@ -1,0 +1,71 @@
+# Lock files ignore requirement (nested package-lock.json ignored)
+package-lock.json
+**/package-lock.json
+
+# Dependencies
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# Build & Output directories
+dist/
+**/dist/
+build/
+**/build/
+.output/
+**/.output/
+.vite/
+**/.vite/
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Environment & Secret configuration files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+!*.env.example
+!**/*.env.example
+
+# Security Keys, Tokens & Certificates
+*.pem
+*.key
+*.crt
+client_secret_*.json
+
+# Logs & Diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# System & OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor Files
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# Testing & Coverage
+coverage/
+**/coverage/
+.nyc_output/
