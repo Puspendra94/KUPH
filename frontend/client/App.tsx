@@ -19,6 +19,7 @@ import Clients from "./pages/Clients";
 import Campaigns from "./pages/Campaigns";
 import CampaignDetails from "./pages/CampaignDetails";
 import Settings from "./pages/Settings";
+import MagicLinkView from "./pages/MagicLinkView";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/callback" element={<Callback />} />
+      <Route path="/campaigns/magic/:token" element={<MagicLinkView />} />
 
       {/* Protected Routes */}
       <Route

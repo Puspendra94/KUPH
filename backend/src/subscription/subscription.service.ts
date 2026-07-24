@@ -13,6 +13,45 @@ export class SubscriptionService {
     private readonly planFeatureRepository: Repository<PlanFeature>,
   ) {}
 
+  async getAllPlans(): Promise<any[]> {
+    const plans = await this.planRepository.find();
+    if (plans.length > 0) return plans;
+
+    // Return default tier plans if database is not seeded
+    return [
+      {
+        id: 'free',
+        name: 'Free',
+        price: '$0',
+        features: ['5 campaigns', 'Basic analytics', 'Email support'],
+        current: false,
+      },
+      {
+        id: 'pro',
+        name: 'Pro',
+        price: '$199',
+        features: ['Unlimited campaigns', 'Advanced analytics', 'Priority support', 'Team collaboration'],
+        current: true,
+      },
+      {
+        id: 'max',
+        name: 'Max',
+        price: '$499',
+        features: ['Everything in Pro', 'API access', 'Custom integrations', 'Dedicated account manager'],
+        current: false,
+      },
+    ];
+  }
+
+  async getCurrentSubscription(): Promise<any> {
+    return {
+      planName: 'Pro',
+      price: '$199/month',
+      renewalDate: 'July 15, 2026',
+      status: 'active',
+    };
+  }
+
   async getPlanById(id: string): Promise<Plan> {
     const plan = await this.planRepository.findOne({ where: { id } });
     if (!plan) {

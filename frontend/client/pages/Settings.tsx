@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useKeycloakAuth } from "@/lib/keycloak-auth";
+import { apiRequest } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,51 +15,102 @@ import {
   Plus,
   Copy,
   Trash2,
+  Check,
+  Loader2,
 } from "lucide-react";
 
 export default function Settings() {
-  const { user, logout } = useKeycloakAuth();
+  const { user, token, logout } = useKeycloakAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
+
+  const [agencyName, setAgencyName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteCode] = useState("KUPH-2026-ABC123");
+  const [inviteCode, setInviteCode] = useState("KUPH-2026-ABC123");
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [currentSub, setCurrentSub] = useState<any>(null);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [inviteSent, setInviteSent] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const teams = [
-    { id: "1", email: "user@example.com", role: "admin", joined: "2026-01-15" },
-    {
-      id: "2",
-      email: "colleague@example.com",
-      role: "member",
-      joined: "2026-02-20",
-    },
-    {
-      id: "3",
-      email: "viewer@example.com",
-      role: "viewer",
-      joined: "2026-03-10",
-    },
-  ];
+  useEffect(() => {
+    if (!token) return;
 
-  const plans = [
-    {
-      name: "Free",
-      price: "$0",
-      features: ["5 campaigns", "Basic analytics", "Email support"],
-      current: false,
-    },
-    {
-      name: "Pro",
-      price: "$199",
-      features: ["Unlimited campaigns", "Advanced analytics", "Priority support", "Team collaboration"],
-      current: true,
-    },
-    {
-      name: "Max",
-      price: "$499",
-      features: ["Everything in Pro", "API access", "Custom integrations", "Dedicated account manager"],
-      current: false,
-    },
-  ];
+    const loadSettingsData = async () => {
+      try {
+        const [agencyRes, membersRes, plansRes, currentSubRes, activityRes] =
+          await Promise.allSettled([
+            apiRequest<any>("/agency/me", { token }),
+            apiRequest<any[]>("/agency/members", { token }),
+            apiRequest<any[]>("/subscription/plans", { token }),
+            apiRequest<any>("/subscription/current", { token }),
+            apiRequest<any[]>("/agency/activity-log", { token }),
+          ]);
+
+        if (agencyRes.status === "fulfilled" && agencyRes.value) {
+          setAgencyName(agencyRes.value.name || "My Agency");
+          if (agencyRes.value.id) setInviteCode(`KUPH-${agencyRes.value.id.slice(0, 8).toUpperCase()}`);
+        }
+
+        if (membersRes.status === "fulfilled" && Array.isArray(membersRes.value)) {
+          setTeamMembers(membersRes.value);
+        }
+
+        if (plansRes.status === "fulfilled" && Array.isArray(plansRes.value)) {
+          setPlans(plansRes.value);
+        }
+
+        if (currentSubRes.status === "fulfilled" && currentSubRes.value) {
+          setCurrentSub(currentSubRes.value);
+        }
+
+        if (activityRes.status === "fulfilled" && Array.isArray(activityRes.value)) {
+          setActivityLogs(activityRes.value);
+        }
+      } catch (err) {
+        console.error("Failed to load settings data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadSettingsData();
+  }, [token]);
+
+  const handleSaveProfile = async () => {
+    if (!token || !agencyName) return;
+    try {
+      await apiRequest("/agency/me", {
+        method: "PUT",
+        token,
+        body: JSON.stringify({ name: agencyName }),
+        headers: { "Content-Type": "application/json" },
+      });
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error("Failed to save agency profile", err);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!token || !inviteEmail) return;
+    try {
+      await apiRequest("/agency/invite", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ email: inviteEmail }),
+        headers: { "Content-Type": "application/json" },
+      });
+      setInviteSent(true);
+      setInviteEmail("");
+      setTimeout(() => setInviteSent(false), 3000);
+    } catch (err) {
+      console.error("Failed to send invite", err);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -122,12 +174,20 @@ export default function Settings() {
                 </label>
                 <Input
                   type="text"
-                  defaultValue="Your Agency Name"
+                  value={agencyName}
+                  onChange={(e) => setAgencyName(e.target.value)}
                   className="mt-1"
                 />
               </div>
-              <div className="flex justify-end">
-                <Button className="bg-primary text-white">Save Changes</Button>
+              <div className="flex items-center justify-between pt-2">
+                {savedSuccess && (
+                  <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                    <Check className="w-4 h-4" /> Agency profile saved!
+                  </span>
+                )}
+                <Button onClick={handleSaveProfile} className="bg-primary text-white ml-auto">
+                  Save Changes
+                </Button>
               </div>
             </div>
           </Card>
@@ -141,27 +201,36 @@ export default function Settings() {
             </h3>
 
             <div className="space-y-4 mb-6">
-              {teams.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center justify-between p-4 border border-border rounded-lg"
-                >
+              {teamMembers.length === 0 ? (
+                <div className="p-4 border border-border rounded-lg flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-foreground">{member.email}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Joined {member.joined}
-                    </p>
+                    <p className="font-medium text-foreground">{user?.email}</p>
+                    <p className="text-sm text-muted-foreground">Primary Admin</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-primary/10 text-primary rounded text-xs font-semibold capitalize">
-                      {member.role}
-                    </span>
-                    <Button variant="ghost" size="icon">
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
+                  <span className="px-3 py-1 bg-primary/10 text-primary rounded text-xs font-semibold uppercase">
+                    ADMIN
+                  </span>
                 </div>
-              ))}
+              ) : (
+                teamMembers.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-4 border border-border rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">{member.user?.email || member.email || user?.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {member.role || "ADMIN"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="px-3 py-1 bg-primary/10 text-primary rounded text-xs font-semibold capitalize">
+                        {member.role || "ADMIN"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="border-t border-border pt-6">
@@ -179,10 +248,17 @@ export default function Settings() {
                     className="mt-1"
                   />
                 </div>
-                <Button className="bg-accent text-white flex gap-2">
-                  <Plus className="w-4 h-4" />
-                  Send Invite
-                </Button>
+                <div className="flex items-center justify-between">
+                  {inviteSent && (
+                    <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                      <Check className="w-4 h-4" /> Invitation sent!
+                    </span>
+                  )}
+                  <Button onClick={handleSendInvite} className="bg-accent text-white flex gap-2 ml-auto">
+                    <Plus className="w-4 h-4" />
+                    Send Invite
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -212,9 +288,9 @@ export default function Settings() {
             </h3>
             <div className="p-4 border border-primary bg-primary/5 rounded-lg">
               <p className="text-sm text-muted-foreground">Current Plan</p>
-              <p className="text-2xl font-bold text-foreground">Pro</p>
+              <p className="text-2xl font-bold text-foreground">{currentSub?.planName || "Pro"}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                $199/month - Renews on July 15, 2026
+                {currentSub?.price || "$199/month"} - Renews on {currentSub?.renewalDate || "July 15, 2026"}
               </p>
             </div>
           </Card>
@@ -234,7 +310,7 @@ export default function Settings() {
                   {plan.price}
                 </p>
                 <ul className="mt-4 space-y-2">
-                  {plan.features.map((feature, i) => (
+                  {plan.features?.map((feature: string, i: number) => (
                     <li key={i} className="text-sm text-muted-foreground">
                       ✓ {feature}
                     </li>
@@ -261,19 +337,24 @@ export default function Settings() {
               Activity Log
             </h3>
             <div className="space-y-4">
-              {[
-                { action: "Logged in", time: "2 hours ago" },
-                { action: "Updated campaign", time: "1 day ago" },
-                { action: "Added team member", time: "3 days ago" },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-3 border-b border-border last:border-0"
-                >
-                  <p className="text-foreground text-sm">{item.action}</p>
-                  <p className="text-xs text-muted-foreground">{item.time}</p>
+              {activityLogs.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No recent activity recorded yet.
                 </div>
-              ))}
+              ) : (
+                activityLogs.map((item, i) => (
+                  <div
+                    key={item.id || i}
+                    className="flex items-center justify-between p-3 border-b border-border last:border-0"
+                  >
+                    <div>
+                      <p className="text-foreground text-sm font-medium">{item.action}</p>
+                      <p className="text-xs text-muted-foreground">{item.entityType}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleTimeString()}</p>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
         </TabsContent>

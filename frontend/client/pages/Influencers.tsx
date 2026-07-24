@@ -354,6 +354,25 @@ export default function Influencers() {
     );
   };
 
+  const handleExportCsv = () => {
+    if (filtered.length === 0) return;
+    const headers = ["name", "niche", "followers", "engagement"];
+    const rows = filtered.map((inf) => {
+      const niche = (inf.customAttributes?.niche as string) || "";
+      const followers = (inf.customAttributes?.followers as string) || "";
+      const engagement = (inf.customAttributes?.engagement as string) || "";
+      return `"${inf.name || ""}","${niche}","${followers}","${engagement}"`;
+    });
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `influencers-export-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -365,6 +384,11 @@ export default function Influencers() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={filtered.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+
           <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
             <Upload className="w-4 h-4 mr-2" />
             Import

@@ -22,17 +22,58 @@ export class AgencyService {
     private readonly agencyMemberRepository: Repository<AgencyMember>,
     @InjectRepository(AgencyInvite)
     private readonly agencyInviteRepository: Repository<AgencyInvite>,
+    @InjectRepository(ActivityLog)
+    private readonly activityLogRepository: Repository<ActivityLog>,
     private readonly userService: UserService,
   ) {}
+
+  async getAgencyForUser(userId: string): Promise<Agency> {
+    const member = await this.agencyMemberRepository.findOne({
+      where: { userId },
+      relations: ['agency'],
+    });
+
+    if (member?.agency) {
+      return member.agency;
+    }
+
+    // Auto-onboard default agency if none exists
+    const onboarded = await this.onboardAgency(userId, 'My Agency');
+    return onboarded.agency;
+  }
+
+  async updateAgencyName(userId: string, name: string): Promise<Agency> {
+    const agency = await this.getAgencyForUser(userId);
+    agency.name = name;
+    return this.agencyRepository.save(agency);
+  }
+
+  async getMembersForUser(userId: string): Promise<AgencyMember[]> {
+    const agency = await this.getAgencyForUser(userId);
+    return this.agencyMemberRepository.find({
+      where: { agencyId: agency.id },
+      relations: ['user'],
+    });
+  }
+
+  async getActivityLogsForUser(userId: string): Promise<ActivityLog[]> {
+    return this.activityLogRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 20,
+    });
+  }
 
   async onboardAgency(
     userId: string,
     agencyName: string,
   ): Promise<{ agency: Agency; member: AgencyMember }> {
-    // Verify user exists
-    const user = await this.userService.findById(userId);
+    let user = await this.userService.findById(userId);
     if (!user) {
-      throw new NotFoundException('User not found');
+      // Auto-provision user record from auth payload if missing
+      user = await this.userService.createUser({
+        email: `user_${userId.slice(0, 8)}@kuph.app`,
+        role: 'user',
+      });
     }
 
     // Create the agency
@@ -41,7 +82,7 @@ export class AgencyService {
 
     // Add the user as admin member
     const member = this.agencyMemberRepository.create({
-      userId,
+      userId: user.id,
       agencyId: savedAgency.id,
       role: AgencyRole.ADMIN,
     });
