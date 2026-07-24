@@ -105,6 +105,68 @@
         }
       }
     },
+    "/api/agency/onboard": {
+      "post": {
+        "operationId": "AgencyController_onboard",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardAgencyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/team/invites/lookup": {
+      "get": {
+        "operationId": "AgencyController_lookupInvite",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/team/invites/accept": {
+      "post": {
+        "operationId": "AgencyController_acceptInvite",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInviteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/crm/import/execute": {
       "post": {
         "operationId": "CrmController_importExecute",
@@ -292,6 +354,15 @@
         "type": "http"
       }
     },
-    "schemas": {}
+    "schemas": {
+      "OnboardAgencyDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AcceptInviteDto": {
+        "type": "object",
+        "properties": {}
+      }
+    }
   }
 }

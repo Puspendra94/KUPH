@@ -75,6 +75,7 @@ export class AgencyService {
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     const invite = this.agencyInviteRepository.create({
+      agencyId,
       email,
       token,
       expiresAt,
@@ -101,10 +102,11 @@ export class AgencyService {
 
   async acceptInvite(userId: string, token: string): Promise<AgencyMember> {
     const invite = await this.resolveInvite(token);
+    const agencyId = invite.agencyId || invite.id;
 
     // Check if user is already a member of this agency
     const existingMember = await this.agencyMemberRepository.findOne({
-      where: { userId, agencyId: invite.id }, // NOTE: invite.id is placeholder; entity needs agencyId field
+      where: { userId, agencyId },
     });
 
     if (existingMember) {
@@ -114,7 +116,7 @@ export class AgencyService {
     // Create the membership
     const member = this.agencyMemberRepository.create({
       userId,
-      agencyId: invite.id, // NOTE: invite.id is placeholder; entity needs agencyId field
+      agencyId,
       role: AgencyRole.MEMBER,
     });
 

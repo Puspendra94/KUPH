@@ -8,11 +8,17 @@ export class NotificationService {
   private readonly fromEmail: string;
 
   constructor(private readonly configService: ConfigService) {
+    const endpoint = this.configService.get<string>('app.aws.endpoint', 'http://localhost:4566');
+    const region = this.configService.get<string>('app.aws.region', 'us-east-1');
+    const accessKeyId = this.configService.get<string>('app.aws.accessKeyId') || 'test';
+    const secretAccessKey = this.configService.get<string>('app.aws.secretAccessKey') || 'test';
+
     this.sesClient = new SESClient({
-      region: this.configService.get<string>('app.aws.region', 'us-east-1'),
+      region,
+      endpoint,
       credentials: {
-        accessKeyId: this.configService.get<string>('app.aws.accessKeyId', ''),
-        secretAccessKey: this.configService.get<string>('app.aws.secretAccessKey', ''),
+        accessKeyId,
+        secretAccessKey,
       },
     });
     this.fromEmail = this.configService.get<string>('app.aws.ses.fromEmail', 'noreply@kuph.app');

@@ -28,9 +28,10 @@ export default registerAs('app', () => ({
   },
 
   aws: {
+    endpoint: process.env.AWS_ENDPOINT || process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
     region: process.env.AWS_REGION || 'us-east-1',
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test',
     ses: {
       fromEmail: process.env.SES_FROM_EMAIL || 'noreply@kuph.app',
     },

@@ -11,6 +11,9 @@ export class AgencyInvite {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ name: 'agency_id', nullable: true })
+  agencyId: string;
+
   @Column()
   email: string;
 

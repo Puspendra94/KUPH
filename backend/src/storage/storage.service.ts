@@ -13,11 +13,18 @@ export class StorageService {
   private readonly bucketName: string;
 
   constructor(private readonly configService: ConfigService) {
+    const endpoint = this.configService.get<string>('app.aws.endpoint', 'http://localhost:4566');
+    const region = this.configService.get<string>('app.aws.region', 'us-east-1');
+    const accessKeyId = this.configService.get<string>('app.aws.accessKeyId') || 'test';
+    const secretAccessKey = this.configService.get<string>('app.aws.secretAccessKey') || 'test';
+
     this.s3Client = new S3Client({
-      region: this.configService.get<string>('app.aws.region', 'us-east-1'),
+      region,
+      endpoint,
+      forcePathStyle: true,
       credentials: {
-        accessKeyId: this.configService.get<string>('app.aws.accessKeyId', ''),
-        secretAccessKey: this.configService.get<string>('app.aws.secretAccessKey', ''),
+        accessKeyId,
+        secretAccessKey,
       },
     });
     this.bucketName = this.configService.get<string>('app.aws.s3.bucketName', 'kuph-assets');
