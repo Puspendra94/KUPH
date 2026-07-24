@@ -36,24 +36,21 @@ async function bootstrap() {
 
   app.enable('trust proxy');
 
-  // Security headers
-  app.use(helmet());
+  // Security headers - allow cross-origin requests for API access
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
 
   const reflector = app.get(Reflector);
   const configService = app.select(SharedModule).get(ConfigService);
 
-  // CORS — explicit configuration with Chrome Private Network Access support
-  const corsOrigins = new Set([...configService.corsOrigins, 'http://localhost:8082', 'http://localhost:8083', 'http://localhost:8081']);
-
+  // CORS — completely open for all origins/sources without restriction
   app.use((req: Request, res: Response, next: NextFunction) => {
-    const origin = req.headers.origin;
-    if (origin && corsOrigins.has(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With');
-    }
-
+    const origin = req.headers.origin || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin,X-Requested-With');
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
 
     if (req.method === 'OPTIONS') {

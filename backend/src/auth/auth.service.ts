@@ -78,9 +78,17 @@ export class AuthService {
    * Calls Keycloak token endpoint directly and returns the token and user profile.
    */
   async loginWithCredentials(email: string, password: string): Promise<{ access_token: string; user: { id: string; email: string; name?: string } }> {
-    const token = await this.authProvider.authenticateWithCredentials(email, password);
-    const user = await this.verifyTokenAndGetUser(token);
-    return { access_token: token, user };
+    try {
+      const token = await this.authProvider.authenticateWithCredentials(email, password);
+      const user = await this.verifyTokenAndGetUser(token);
+      return { access_token: token, user };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : '';
+      if (msg.includes('invalid_grant') || msg.includes('Invalid user credentials') || msg.includes('authentication failed')) {
+        throw new UnauthorizedException('Invalid email or password. Please check your credentials.');
+      }
+      throw new UnauthorizedException(msg || 'Authentication failed');
+    }
   }
 
   /**
@@ -89,36 +97,34 @@ export class AuthService {
    */
   async signupWithCredentials(email: string, password: string, name?: string): Promise<{ access_token: string; user: { id: string; email: string; name?: string } }> {
     let userCreated = false;
+    let userAlreadyExisted = false;
+
     try {
       // Create user in Keycloak admin API
-      console.log('signupWithCredentials:', email, password, name);
       await this.authProvider.createKeycloakUser(email, password, name);
-      console.log('signupWithCredentials:', 'User created successfully in Keycloak');
       userCreated = true;
     } catch (error) {
-      // If user already exists (conflict 409), try to login instead
       const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
       if (errorMessage.includes('user exists') || errorMessage.includes('conflict') || errorMessage.includes('duplicate')) {
-        // User already exists, so just login
+        userAlreadyExisted = true;
       } else {
-        // For any other creation error (e.g., Keycloak unavailable), try login
-        // The user might already exist, or login will fail with a meaningful error
+        throw new UnauthorizedException(`Signup failed: ${error instanceof Error ? error.message : 'Unable to create user'}`);
       }
     }
     
-    // Login with the credentials (either new or existing user)
+    // Login with the credentials
     try {
       const token = await this.authProvider.authenticateWithCredentials(email, password);
       const user = await this.verifyTokenAndGetUser(token);
       return { access_token: token, user };
     } catch (error) {
-      // If user was created but login failed, provide a helpful error message
-      if (userCreated) {
-        throw new UnauthorizedException('Account created but login failed. Please try signing in.');
+      if (userAlreadyExisted) {
+        throw new UnauthorizedException('An account with this email already exists. Please check your password or sign in.');
       }
-      // If we didn't even create the user, authentication also failed
-      // This typically means Keycloak is unreachable or credentials are invalid
-      throw error;
+      if (userCreated) {
+        throw new UnauthorizedException('Account created successfully, but automatic login failed. Please sign in with your password.');
+      }
+      throw new UnauthorizedException('Failed to authenticate newly created user.');
     }
   }
 
