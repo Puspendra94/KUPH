@@ -89,10 +89,11 @@ export default function Register() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Name Field */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="reg-name" className="block text-sm font-medium text-foreground mb-2">
                   Full Name (Optional)
                 </label>
                 <input
+                  id="reg-name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -104,10 +105,11 @@ export default function Register() {
 
               {/* Email Field */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="reg-email" className="block text-sm font-medium text-foreground mb-2">
                   Email Address
                 </label>
                 <input
+                  id="reg-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -120,11 +122,12 @@ export default function Register() {
 
               {/* Password Field */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="reg-password" className="block text-sm font-medium text-foreground mb-2">
                   Password
                 </label>
                 <div className="relative">
                   <input
+                    id="reg-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -145,10 +148,11 @@ export default function Register() {
 
               {/* Confirm Password Field */}
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="reg-confirm-password" className="block text-sm font-medium text-foreground mb-2">
                   Confirm Password
                 </label>
                 <input
+                  id="reg-confirm-password"
                   type={showPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
